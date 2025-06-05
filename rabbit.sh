@@ -3,7 +3,8 @@
 case "$1" in
     start)
         echo "Starting RabbitMQ container..."
-        docker run -d --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3.13-management
+        #docker run -d --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3.13-management
+        docker run -d --rm --name rabbitmq -p 5672:5672 -p 15672:15672 -p 61613:61613 rabbitmq-stomp:latest
         ;;
     stop)
         echo "Stopping RabbitMQ container..."
