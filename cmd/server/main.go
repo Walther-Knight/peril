@@ -28,6 +28,7 @@ func main() {
 		log.Printf("Error starting pubSub channel: %v", err)
 		return
 	}
+	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, "game_logs.*", 0)
 	gamelogic.PrintServerHelp()
 
 	for {
