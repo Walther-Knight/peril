@@ -36,6 +36,9 @@ func main() {
 		case userInput == nil:
 			continue
 
+		case len(userInput) == 0:
+			continue
+
 		case strings.ToLower(userInput[0]) == "pause":
 			log.Println("Sending pause message")
 			err = pubsub.PublishJSON(pubSub, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
@@ -72,6 +75,10 @@ func main() {
 		case strings.ToLower(userInput[0]) == "quit":
 			fmt.Println("Shutting down Peril server...")
 			return
+
+		default:
+			fmt.Println("Invalid command. Try again.")
+			continue
 		}
 	}
 

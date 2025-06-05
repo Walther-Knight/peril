@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -36,15 +35,53 @@ func main() {
 		os.Exit(1)
 	}
 	gamelogic.PrintClientHelp()
-
-	//userInput := gamelogic.GetInput()
-
-	// durable = 0 transient = 1
 	pubsub.DeclareAndBind(conn, routing.ExchangePerilDirect, fmt.Sprintf("pause.%s", userName), routing.PauseKey, 1)
+	gs := gamelogic.NewGameState(userName)
 
-	closePeril := make(chan os.Signal, 1)
-	signal.Notify(closePeril, os.Interrupt)
-	<-closePeril
-	fmt.Println("Shutting down Peril client...")
+	for {
+		userInput := gamelogic.GetInput()
+		switch {
+		case userInput == nil:
+			continue
 
+		case len(userInput) == 0:
+			continue
+
+		case userInput[0] == "spawn":
+			err := gs.CommandSpawn(userInput)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			continue
+		case userInput[0] == "move":
+			_, err := gs.CommandMove(userInput)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			fmt.Println("Move completed...")
+			continue
+
+		case userInput[0] == "status":
+			gs.CommandStatus()
+			continue
+
+		case userInput[0] == "help":
+			gamelogic.PrintClientHelp()
+			continue
+
+		case userInput[0] == "spam":
+			fmt.Println("Spamming not allowed yet!")
+			continue
+
+		case userInput[0] == "quit":
+			gamelogic.PrintQuit()
+			return
+
+		default:
+			fmt.Println("Invalid command. Try again.")
+			continue
+		}
+	}
 }
