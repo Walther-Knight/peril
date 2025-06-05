@@ -40,6 +40,6 @@ func main() {
 	closePeril := make(chan os.Signal, 1)
 	signal.Notify(closePeril, os.Interrupt)
 	<-closePeril
-	fmt.Println("Shutting down Peril...")
+	fmt.Println("Shutting down Peril server...")
 
 }
