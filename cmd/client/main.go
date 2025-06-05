@@ -37,6 +37,11 @@ func main() {
 	gamelogic.PrintClientHelp()
 	pubsub.DeclareAndBind(conn, routing.ExchangePerilDirect, fmt.Sprintf("pause.%s", userName), routing.PauseKey, 1)
 	gs := gamelogic.NewGameState(userName)
+	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, fmt.Sprintf("pause.%s", userName), routing.PauseKey, 1, HandlerPause(gs))
+	if err != nil {
+		log.Printf("Error subscribing to JSON: %v", err)
+		return
+	}
 
 	for {
 		userInput := gamelogic.GetInput()
@@ -84,4 +89,8 @@ func main() {
 			continue
 		}
 	}
+}
+
+func HandlerPause(gs *gamelogic.GameState) func(routing.PlayingState) {
+	return func(ps routing.PlayingState) { defer fmt.Print("> "); gs.HandlePause(ps) }
 }
