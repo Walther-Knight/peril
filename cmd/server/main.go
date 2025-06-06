@@ -16,7 +16,7 @@ import (
 func main() {
 	fmt.Println("Starting Peril server...")
 	connString := "amqp://guest:guest@localhost:5672/"
-	Conn, err := amqp.Dial(connString)
+	conn, err := amqp.Dial(connString)
 	if err != nil {
 		log.Println("You forgot to start RabbitMQ")
 		cmd := exec.Command("/home/brent_admin/workspace/github.com/Walther-Knight/peril/rabbit.sh", "start")
@@ -30,17 +30,17 @@ func main() {
 		return
 	}
 
-	defer Conn.Close()
+	defer conn.Close()
 	fmt.Println("Successful connection to server..")
 
-	pubSub, err := Conn.Channel()
+	pubSub, err := conn.Channel()
 	if err != nil {
 		log.Printf("Error starting pubSub channel: %v", err)
 		return
 	}
 	pubSub.ExchangeDeclare("peril_direct", "direct", true, false, false, false, nil)
 	pubSub.ExchangeDeclare("peril_topic", "topic", true, false, false, false, nil)
-	pubsub.DeclareAndBind(Conn, routing.ExchangePerilTopic, routing.GameLogSlug, "game_logs.*", 0)
+	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, "game_logs.*", 0)
 	gamelogic.PrintServerHelp()
 
 	for {

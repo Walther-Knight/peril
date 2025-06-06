@@ -23,7 +23,7 @@ func main() {
 	defer conn.Close()
 	fmt.Println("Successful connection to server..")
 
-	_, err = conn.Channel()
+	pubSub, err := conn.Channel()
 	if err != nil {
 		log.Printf("Error starting pubSub channel: %v", err)
 		return
@@ -35,9 +35,24 @@ func main() {
 		os.Exit(1)
 	}
 	gamelogic.PrintClientHelp()
+	// binding for queues
 	pubsub.DeclareAndBind(conn, routing.ExchangePerilDirect, fmt.Sprintf("pause.%s", userName), routing.PauseKey, 1)
+	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, fmt.Sprintf("army_moves.%s", userName), "army_moves.*", 1)
+
+	// instantiate new game
 	gs := gamelogic.NewGameState(userName)
+
+	// subscribe handlers for commands
 	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, fmt.Sprintf("pause.%s", userName), routing.PauseKey, 1, HandlerPause(gs))
+	if err != nil {
+		log.Printf("Error subscribing to JSON: %v", err)
+		return
+	}
+
+	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, fmt.Sprintf("army_moves.%s", userName), "army_moves.*", 1, func(receivedMove gamelogic.ArmyMove) {
+		defer fmt.Print("> ")
+		gs.HandleMove(receivedMove)
+	})
 	if err != nil {
 		log.Printf("Error subscribing to JSON: %v", err)
 		return
@@ -59,13 +74,14 @@ func main() {
 				continue
 			}
 			continue
+
 		case userInput[0] == "move":
-			_, err := gs.CommandMove(userInput)
+			move, err := gs.CommandMove(userInput)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
-			fmt.Println("Move completed...")
+			pubsub.PublishJSON(pubSub, routing.ExchangePerilTopic, fmt.Sprintf("army_moves.%s", userName), move)
 			continue
 
 		case userInput[0] == "status":
