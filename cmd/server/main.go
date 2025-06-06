@@ -40,7 +40,9 @@ func main() {
 	}
 	pubSub.ExchangeDeclare("peril_direct", "direct", true, false, false, false, nil)
 	pubSub.ExchangeDeclare("peril_topic", "topic", true, false, false, false, nil)
+	pubSub.ExchangeDeclare("peril_dlx", "fanout", true, false, false, false, nil)
 	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, "game_logs.*", 0)
+	pubsub.DeclareAndBind(conn, "peril_dlx", "peril_dlq", "", 0)
 	gamelogic.PrintServerHelp()
 
 	for {

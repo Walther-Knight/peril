@@ -72,7 +72,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	simpleQueueType int, // an enum to represent "durable" or "transient"
-	handler func(T),
+	handler func(T) string,
 ) error {
 	channel, _, err := DeclareAndBind(conn, exchange, queueName, key, simpleQueueType)
 	if err != nil {
@@ -88,8 +88,21 @@ func SubscribeJSON[T any](
 		for delivery := range D {
 			var data T
 			json.Unmarshal(delivery.Body, &data)
-			handler(data)
-			delivery.Ack(false)
+			acktype := handler(data)
+			switch {
+			case acktype == "Ack":
+				log.Printf("Ack for key: %v Message Body: %v", delivery.RoutingKey, data)
+				delivery.Ack(false)
+			case acktype == "NackRequeue":
+				log.Printf("NackRequeue for key: %v Message Body: %v", delivery.RoutingKey, data)
+				delivery.Nack(false, true)
+			case acktype == "NackDiscard":
+				log.Printf("NackDiscard for key: %v Message Body: %v", delivery.RoutingKey, data)
+				delivery.Nack(false, false)
+			default:
+				log.Printf("Default for key: %v Message Body: %v", delivery.RoutingKey, data)
+				delivery.Nack(false, false)
+			}
 		}
 	}(deliveryChan)
 

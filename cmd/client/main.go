@@ -49,9 +49,20 @@ func main() {
 		return
 	}
 
-	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, fmt.Sprintf("army_moves.%s", userName), "army_moves.*", 1, func(receivedMove gamelogic.ArmyMove) {
+	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, fmt.Sprintf("army_moves.%s", userName), "army_moves.*", 1, func(receivedMove gamelogic.ArmyMove) string {
 		defer fmt.Print("> ")
-		gs.HandleMove(receivedMove)
+		moveOutcome := gs.HandleMove(receivedMove)
+		switch {
+		case moveOutcome == gamelogic.MoveOutcomeSamePlayer:
+			return "NackDiscard"
+		case moveOutcome == gamelogic.MoveOutComeSafe:
+			return "Ack"
+		case moveOutcome == gamelogic.MoveOutcomeMakeWar:
+			return "Ack"
+		default:
+			return "NackDiscard"
+		}
+
 	})
 	if err != nil {
 		log.Printf("Error subscribing to JSON: %v", err)
@@ -107,6 +118,6 @@ func main() {
 	}
 }
 
-func HandlerPause(gs *gamelogic.GameState) func(routing.PlayingState) {
-	return func(ps routing.PlayingState) { defer fmt.Print("> "); gs.HandlePause(ps) }
+func HandlerPause(gs *gamelogic.GameState) func(routing.PlayingState) string {
+	return func(ps routing.PlayingState) string { defer fmt.Print("> "); gs.HandlePause(ps); return "Ack" }
 }
