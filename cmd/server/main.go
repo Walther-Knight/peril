@@ -26,8 +26,11 @@ func main() {
 			return
 		}
 		time.Sleep(10 * time.Second)
-		log.Println("RabbitMQ should be up, try to start server again")
-		return
+		conn, err = amqp.Dial(connString)
+		if err != nil {
+			log.Printf("Still can't connect: %v", err)
+			return
+		}
 	}
 
 	defer conn.Close()
