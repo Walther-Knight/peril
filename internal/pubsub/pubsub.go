@@ -105,16 +105,16 @@ func SubscribeJSON[T any](
 			acktype := handler(data)
 			switch {
 			case acktype == "Ack":
-				log.Printf("Ack for key: %v Message Body: %v", delivery.RoutingKey, data)
+				log.Printf("Ack for key: %v Message Body: %v\n", delivery.RoutingKey, data)
 				delivery.Ack(false)
 			case acktype == "NackRequeue":
-				log.Printf("NackRequeue for key: %v Message Body: %v", delivery.RoutingKey, data)
+				log.Printf("NackRequeue for key: %v Message Body: %v\n", delivery.RoutingKey, data)
 				delivery.Nack(false, true)
 			case acktype == "NackDiscard":
-				log.Printf("NackDiscard for key: %v Message Body: %v", delivery.RoutingKey, data)
+				log.Printf("NackDiscard for key: %v Message Body: %v\n", delivery.RoutingKey, data)
 				delivery.Nack(false, false)
 			default:
-				log.Printf("Default for key: %v Message Body: %v", delivery.RoutingKey, data)
+				log.Printf("Default for key: %v Message Body: %v\n", delivery.RoutingKey, data)
 				delivery.Nack(false, false)
 			}
 		}

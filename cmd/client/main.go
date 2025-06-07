@@ -58,11 +58,41 @@ func main() {
 		case moveOutcome == gamelogic.MoveOutComeSafe:
 			return "Ack"
 		case moveOutcome == gamelogic.MoveOutcomeMakeWar:
+			err = pubsub.PublishJSON(pubSub, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.WarRecognitionsPrefix, userName), gamelogic.RecognitionOfWar{
+				Attacker: receivedMove.Player,
+				Defender: gs.Player,
+			})
+			if err != nil {
+				return "NackRequeue"
+			}
 			return "Ack"
 		default:
 			return "NackDiscard"
 		}
+	})
+	if err != nil {
+		log.Printf("Error subscribing to JSON: %v", err)
+		return
+	}
 
+	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, routing.WarRecognitionsPrefix, fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix), 0, func(rw gamelogic.RecognitionOfWar) string {
+		defer fmt.Print("> ")
+		warOutcome, _, _ := gs.HandleWar(rw)
+		switch {
+		case warOutcome == gamelogic.WarOutcomeNotInvolved:
+			return "NackRequeue"
+		case warOutcome == gamelogic.WarOutcomeNoUnits:
+			return "NackDiscard"
+		case warOutcome == gamelogic.WarOutcomeOpponentWon:
+			return "Ack"
+		case warOutcome == gamelogic.WarOutcomeYouWon:
+			return "Ack"
+		case warOutcome == gamelogic.WarOutcomeDraw:
+			return "Ack"
+		default:
+			log.Println("Error resolving war condition. Discarding message.")
+			return "NackDiscard"
+		}
 	})
 	if err != nil {
 		log.Printf("Error subscribing to JSON: %v", err)

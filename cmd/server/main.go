@@ -22,14 +22,24 @@ func main() {
 		cmd := exec.Command("/home/brent_admin/workspace/github.com/Walther-Knight/peril/rabbit.sh", "start")
 		err = cmd.Run()
 		if err != nil {
-			log.Printf("RabbitMQ script failed: %v", err)
+			log.Printf("RabbitMQ script failed: %v\n", err)
 			return
 		}
 		time.Sleep(10 * time.Second)
 		conn, err = amqp.Dial(connString)
 		if err != nil {
-			log.Printf("Still can't connect: %v", err)
-			return
+			log.Println("Still can't connect: retrying...")
+			time.Sleep(10 * time.Second)
+			conn, err = amqp.Dial(connString)
+			if err != nil {
+				log.Println("Still can't connect: retrying...")
+				time.Sleep(10 * time.Second)
+				conn, err = amqp.Dial(connString)
+				if err != nil {
+					log.Printf("Still can't connect: %v", err)
+					return
+				}
+			}
 		}
 	}
 
@@ -46,6 +56,7 @@ func main() {
 	pubSub.ExchangeDeclare("peril_dlx", "fanout", true, false, false, false, nil)
 	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, "game_logs.*", 0)
 	pubsub.DeclareAndBind(conn, "peril_dlx", "peril_dlq", "", 0)
+	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.WarRecognitionsPrefix, fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix), 0)
 	gamelogic.PrintServerHelp()
 
 	for {
@@ -63,7 +74,7 @@ func main() {
 				IsPaused: true,
 			})
 			if err != nil {
-				log.Printf("Error publishing: %s", err)
+				log.Printf("Error publishing: %s\n", err)
 				return
 			}
 			continue
@@ -74,7 +85,7 @@ func main() {
 				IsPaused: false,
 			})
 			if err != nil {
-				log.Printf("Error publishing: %s", err)
+				log.Printf("Error publishing: %s\n", err)
 				return
 			}
 			continue
@@ -85,7 +96,7 @@ func main() {
 				IsPaused: true,
 			})
 			if err != nil {
-				log.Printf("Error publishing: %s", err)
+				log.Printf("Error publishing: %s\n", err)
 				return
 			}
 			continue
