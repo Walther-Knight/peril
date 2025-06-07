@@ -51,10 +51,24 @@ func DeclareAndBind(
 		exclusive = false
 	}
 
-	queue, err := chanName.QueueDeclare(queueName, durable, autoDelete, exclusive, false, nil)
-	if err != nil {
-		log.Printf("Error declaring pubsub queue: %v", err)
-		return nil, amqp.Queue{}, err
+	deadLetter := amqp.Table{
+		"x-dead-letter-exchange": "peril_dlx",
+	}
+
+	var queue amqp.Queue
+
+	if queueName == "peril_dlq" {
+		queue, err = chanName.QueueDeclare(queueName, durable, autoDelete, exclusive, false, nil)
+		if err != nil {
+			log.Printf("Error declaring pubsub queue: %v", err)
+			return nil, amqp.Queue{}, err
+		}
+	} else {
+		queue, err = chanName.QueueDeclare(queueName, durable, autoDelete, exclusive, false, deadLetter)
+		if err != nil {
+			log.Printf("Error declaring pubsub queue: %v", err)
+			return nil, amqp.Queue{}, err
+		}
 	}
 
 	err = chanName.QueueBind(queueName, key, exchange, false, nil)
