@@ -157,6 +157,10 @@ func SubscribeGob[T any](
 		return err
 	}
 
+	err = channel.Qos(10, 0, true)
+	if err != nil {
+		log.Printf("Error setting channel QoS: %v", err)
+	}
 	deliveryChan, err := channel.Consume(queueName, "", false, false, false, false, nil)
 	if err != nil {
 		log.Printf("Error getting delivery channel: %v", err)
@@ -169,6 +173,7 @@ func SubscribeGob[T any](
 			decoder := gob.NewDecoder(buffer)
 			err = decoder.Decode(&data)
 			if err != nil {
+				log.Println(data)
 				log.Printf("Error decoding gob: %v", err)
 				return
 			}

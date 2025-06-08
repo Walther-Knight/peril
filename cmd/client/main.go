@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
@@ -159,7 +160,26 @@ func main() {
 			continue
 
 		case userInput[0] == "spam":
-			fmt.Println("Spamming not allowed yet!")
+			if len(userInput) <= 1 {
+				fmt.Println("Spamming requires an integer in second argument!")
+				continue
+			}
+			spamQuantity, err := strconv.Atoi(userInput[1])
+			if err != nil {
+				fmt.Printf("Spamming requires and integer. You provided: %s", userInput[1])
+			}
+			for range spamQuantity {
+				msg := gamelogic.GetMaliciousLog()
+				err := pubsub.PublishGob(pubSub, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.GameLogSlug, userName), routing.GameLog{
+					CurrentTime: time.Now(),
+					Message:     msg,
+					Username:    userName,
+				})
+				if err != nil {
+					log.Printf("Error spamming Gob to game_logs: %v", err)
+					continue
+				}
+			}
 			continue
 
 		case userInput[0] == "quit":

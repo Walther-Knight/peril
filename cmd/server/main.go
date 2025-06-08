@@ -54,11 +54,11 @@ func main() {
 	pubSub.ExchangeDeclare("peril_direct", "direct", true, false, false, false, nil)
 	pubSub.ExchangeDeclare("peril_topic", "topic", true, false, false, false, nil)
 	pubSub.ExchangeDeclare("peril_dlx", "fanout", true, false, false, false, nil)
-	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, "game_logs.*", 0)
+	// pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, "game_logs.*", 0)
 	pubsub.SubscribeGob(conn, routing.ExchangePerilTopic, routing.GameLogSlug, fmt.Sprintf("%s.*", routing.GameLogSlug), 0, func(receivedLog routing.GameLog) string {
 		defer fmt.Println("> ")
 		gamelogic.WriteLog(receivedLog)
-		return ""
+		return "Ack"
 	})
 	pubsub.DeclareAndBind(conn, "peril_dlx", "peril_dlq", "", 0)
 	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.WarRecognitionsPrefix, fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix), 0)
