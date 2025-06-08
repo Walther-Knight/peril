@@ -143,3 +143,52 @@ func PublishGob[T any](ch *amqp.Channel, exchange, key string, val T) error {
 	}
 	return nil
 }
+
+func SubscribeGob[T any](
+	conn *amqp.Connection,
+	exchange,
+	queueName,
+	key string,
+	simpleQueueType int, // an enum to represent "durable" or "transient"
+	handler func(T) string,
+) error {
+	channel, _, err := DeclareAndBind(conn, exchange, queueName, key, simpleQueueType)
+	if err != nil {
+		return err
+	}
+
+	deliveryChan, err := channel.Consume(queueName, "", false, false, false, false, nil)
+	if err != nil {
+		log.Printf("Error getting delivery channel: %v", err)
+		return err
+	}
+	go func(D <-chan amqp.Delivery) {
+		for delivery := range D {
+			var data T
+			buffer := bytes.NewBuffer(delivery.Body)
+			decoder := gob.NewDecoder(buffer)
+			err = decoder.Decode(&data)
+			if err != nil {
+				log.Printf("Error decoding gob: %v", err)
+				return
+			}
+			acktype := handler(data)
+			switch {
+			case acktype == "Ack":
+				log.Printf("Ack for key: %v Message Body: %v\n", delivery.RoutingKey, data)
+				delivery.Ack(false)
+			case acktype == "NackRequeue":
+				log.Printf("NackRequeue for key: %v Message Body: %v\n", delivery.RoutingKey, data)
+				delivery.Nack(false, true)
+			case acktype == "NackDiscard":
+				log.Printf("NackDiscard for key: %v Message Body: %v\n", delivery.RoutingKey, data)
+				delivery.Nack(false, false)
+			default:
+				log.Printf("Default for key: %v Message Body: %v\n", delivery.RoutingKey, data)
+				delivery.Nack(false, false)
+			}
+		}
+	}(deliveryChan)
+
+	return nil
+}
