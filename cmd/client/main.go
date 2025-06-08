@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -42,13 +43,13 @@ func main() {
 	// instantiate new game
 	gs := gamelogic.NewGameState(userName)
 
-	// subscribe handlers for commands
+	// Pause handler
 	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, fmt.Sprintf("pause.%s", userName), routing.PauseKey, 1, HandlerPause(gs))
 	if err != nil {
 		log.Printf("Error subscribing to JSON: %v", err)
 		return
 	}
-
+	// Move Handler
 	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, fmt.Sprintf("army_moves.%s", userName), "army_moves.*", 1, func(receivedMove gamelogic.ArmyMove) string {
 		defer fmt.Print("> ")
 		moveOutcome := gs.HandleMove(receivedMove)
@@ -74,20 +75,44 @@ func main() {
 		log.Printf("Error subscribing to JSON: %v", err)
 		return
 	}
-
+	// War handler
 	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, routing.WarRecognitionsPrefix, fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix), 0, func(rw gamelogic.RecognitionOfWar) string {
 		defer fmt.Print("> ")
-		warOutcome, _, _ := gs.HandleWar(rw)
+		warOutcome, winner, loser := gs.HandleWar(rw)
 		switch {
 		case warOutcome == gamelogic.WarOutcomeNotInvolved:
 			return "NackRequeue"
 		case warOutcome == gamelogic.WarOutcomeNoUnits:
 			return "NackDiscard"
 		case warOutcome == gamelogic.WarOutcomeOpponentWon:
+			err = pubsub.PublishGob(pubSub, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.GameLogSlug, userName), routing.GameLog{
+				CurrentTime: time.Now(),
+				Message:     fmt.Sprintf("%s won a war against %s", winner, loser),
+				Username:    userName,
+			})
+			if err != nil {
+				return "NackRequeue"
+			}
 			return "Ack"
 		case warOutcome == gamelogic.WarOutcomeYouWon:
+			err = pubsub.PublishGob(pubSub, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.GameLogSlug, userName), routing.GameLog{
+				CurrentTime: time.Now(),
+				Message:     fmt.Sprintf("%s won a war against %s", winner, loser),
+				Username:    userName,
+			})
+			if err != nil {
+				return "NackRequeue"
+			}
 			return "Ack"
 		case warOutcome == gamelogic.WarOutcomeDraw:
+			err = pubsub.PublishGob(pubSub, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.GameLogSlug, userName), routing.GameLog{
+				CurrentTime: time.Now(),
+				Message:     fmt.Sprintf("A war between %s and %s resulted in a draw", winner, loser),
+				Username:    userName,
+			})
+			if err != nil {
+				return "NackRequeue"
+			}
 			return "Ack"
 		default:
 			log.Println("Error resolving war condition. Discarding message.")
